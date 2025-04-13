@@ -1,4 +1,7 @@
 __pycache__
 outputs/
-venv/
+.venv/
 .DS_Store
+*.wav
+!examples/*.wav
+node_modules
