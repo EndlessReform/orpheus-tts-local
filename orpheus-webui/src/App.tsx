@@ -16,6 +16,7 @@ import { WavStreamPlayer } from "wavtools";
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
   dangerouslyAllowBrowser: true, // **Required** for frontend usage, acknowledges security risks
+  baseURL: import.meta.env.VITE_OPENAI_BASE_URL,
 });
 
 // --- Voice Options ---
