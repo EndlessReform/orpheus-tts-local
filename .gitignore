@@ -5,3 +5,4 @@ outputs/
 *.wav
 !examples/*.wav
 node_modules
+.env

@@ -1,0 +1,15 @@
+[project]
+name = "orpheus-tts-local"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.12",
+    "numpy>=1.20.0",
+    "requests>=2.25.0",
+    "snac>=1.2.1",
+    "sounddevice>=0.4.4",
+    "torch>=2.0.0",
+    "uvicorn[standard]>=0.34.1",
+]
