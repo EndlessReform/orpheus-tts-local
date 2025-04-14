@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import OpenAI from 'openai';
-import { playAudio } from 'openai/helpers/audio'; // Helper for easy playback
 
 // Import ShadCN components
 import { Button } from "@/components/ui/button"; // Adjust path if needed
@@ -19,11 +18,10 @@ const openai = new OpenAI({
   baseURL: import.meta.env.VITE_OPENAI_BASE_URL,
 });
 
-// --- Voice Options ---
 const voices = ['ash', 'ballad', 'coral', 'sage', 'verse'];
 const defaultVoice = 'coral';
 const defaultInstructions = "Voice Affect: Calm, composed, and reassuring. Competent and in control, instilling trust.\n\nTone: Sincere, empathetic, with genuine concern for the customer and understanding of the situation.\n\nPacing: Slower during the apology to allow for clarity and processing. Faster when offering solutions to signal action and resolution.\n\nEmotions: Calm reassurance, empathy, and gratitude.\n\nPronunciation: Clear, precise: Ensures clarity, especially with key details. Focus on key words like \"refund\" and \"patience.\" \n\nPauses: Before and after the apology to give space for processing the apology.";
-const defaultInputText = "Thank you for reaching out, and I'm truly sorry about the unexpected charge on your bill. I completely understand how frustrating this must be, especially after your stay.\n\nAfter reviewing your reservation, I can confirm that this was an error on our part. I'll be issuing a full refund right away, and you should see the amount credited to your payment method within a few business days.\n\nI appreciate your understanding and patience, and I'm here if you need any further assistance. Thank you for allowing us to resolve this for you.";
+const defaultInputText = "Thank you for reaching out, and I'm truly sorry about the unexpected charge on your bill. I completely understand how frustrating this must be, especially after your stay.\n\nAfter reviewing your reservation, I can confirm that this was an error on our part.";
 
 function App() {
   const [selectedVoice, setSelectedVoice] = useState(defaultVoice);
@@ -31,57 +29,53 @@ function App() {
   const [inputText, setInputText] = useState(defaultInputText);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null); // To potentially stop previous audio
+  const wavPlayerRef = useRef<WavStreamPlayer | null>(null);
 
   const handleGenerateAudio = async () => {
     if (!inputText.trim()) {
       setError("Please enter some text to synthesize.");
       return;
     }
+
     if (!openai.apiKey) {
       setError("OpenAI API key not configured. Please set VITE_OPENAI_API_KEY in your .env file.");
       return;
     }
 
-
     setIsLoading(true);
     setError(null);
 
-    // Stop any currently playing audio
-    if (audioPlayer) {
-      audioPlayer.pause();
-      audioPlayer.currentTime = 0;
-      setAudioPlayer(null);
-    }
-
-
     try {
-      console.log('Sending request to OpenAI with:', {
-        model: 'gpt-4o-mini-tts', // Or use 'tts-1' / 'tts-1-hd' if needed
-        voice: selectedVoice,
-        input: inputText,
-        instructions: instructions.trim() ? instructions : undefined, // Only send if not empty
-      });
+      // --- Lazy-init WavStreamPlayer (inside user gesture) ---
+      if (!wavPlayerRef.current) {
+        const player = new WavStreamPlayer({ sampleRate: 24000 });
+        await player.connect(); // <- NOW valid because we're inside a click handler
+        wavPlayerRef.current = player;
+      }
+
+      // Stop any currently playing audio
+      await wavPlayerRef.current.interrupt();
 
       const response = await openai.audio.speech.create({
-        model: 'gpt-4o-mini-tts', // You can change the model here
+        model: 'gpt-4o-mini-tts',
         voice: selectedVoice,
         input: inputText,
-        // Only include instructions if the textarea is not empty
-        ...(instructions.trim() && { instructions: instructions }),
+        ...(instructions.trim() && { instructions }),
       });
 
-      // Use the playAudio helper
-      // playAudio returns the HTMLAudioElement it creates
-      const player = await playAudio(response);
-      setAudioPlayer(player); // Store the player instance
-      player.onended = () => setAudioPlayer(null); // Clear when finished
+      const arrayBuffer = await response.arrayBuffer();
+      const audioData = new Int16Array(arrayBuffer);
+      const audioLength = audioData.length;
 
-    } catch (err) {
+      if (audioLength === 0) {
+        throw new Error("Generated audio data is empty.");
+      }
+
+      wavPlayerRef.current.add16BitPCM(audioData, 'tts-audio');
+
+    } catch (err: any) {
       console.error("Error generating speech:", err);
-      setError(err.message || "An unknown error occurred during audio generation.");
-      // Try to parse more specific OpenAI error messages if available
-      if (err.response && err.response.data && err.response.data.error) {
+      if (err.response?.data?.error?.message) {
         setError(`OpenAI Error: ${err.response.data.error.message}`);
       } else if (err.message) {
         setError(err.message);
@@ -92,6 +86,7 @@ function App() {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="container mx-auto p-4 max-w-2xl space-y-6">

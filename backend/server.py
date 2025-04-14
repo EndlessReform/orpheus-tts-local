@@ -1,19 +1,17 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 from typing import Optional
 
 from gguf_orpheus import generate_speech_from_api
-from decoder import get_model
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Server is starting up...")
-    model, _ = get_model()
-    app.state.decoder_model = model
     yield
     print("Server is shutting down...")
 
@@ -39,9 +37,13 @@ class SpeechRequest(BaseModel):
 @app.post("/v1/audio/speech")
 async def generate_speech(request: SpeechRequest):
     try:
-        audio_data = generate_speech_from_api(request.input, request.voice)
+        audio_data = generate_speech_from_api(
+            request.input, request.voice, instructions=request.instructions
+        )
+        # Flatten audio_data (list of bytes) into a single bytes object
+        pcm_audio = b"".join(audio_data)
 
-        return {"audio": "no audio"}
+        return Response(content=pcm_audio, media_type="audio/pcm")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

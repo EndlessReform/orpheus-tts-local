@@ -1,7 +1,6 @@
 from snac import SNAC
 import numpy as np
 import torch
-from typing import Optional
 
 TOKENS_PER_FRAME = 7
 
@@ -16,22 +15,16 @@ def get_device():
     )
 
 
-def get_model(device: Optional[str] = None):
-    model = SNAC.from_pretrained("hubertsiuzdak/snac_24khz").eval()
+model = SNAC.from_pretrained("hubertsiuzdak/snac_24khz").eval()
 
-    # Check if CUDA is available and set device accordingly
-    if device is None:
-        device = get_device()
-    print(f"Using device: {device}")
-    model = model.to(device)
-    return model, device
+device = get_device()
+print(f"Using device: {device}")
+model = model.to(device)
 
 
-def convert_to_audio(model, multiframe):
+def convert_to_audio(multiframe):
     if len(multiframe) < TOKENS_PER_FRAME:
         return
-
-    device = next(model.parameters()).device
 
     codes_0 = torch.tensor([], device=device, dtype=torch.int32)
     codes_1 = torch.tensor([], device=device, dtype=torch.int32)

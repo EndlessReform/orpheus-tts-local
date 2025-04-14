@@ -11,7 +11,7 @@ import threading
 import queue
 import asyncio
 
-from decoder import convert_to_audio, get_model, turn_token_into_id, TOKENS_PER_FRAME
+from decoder import convert_to_audio, turn_token_into_id, TOKENS_PER_FRAME
 
 # LM Studio API settings
 API_URL = "http://127.0.0.1:1234/v1/completions"
@@ -51,6 +51,12 @@ def format_prompt(prompt, voice=DEFAULT_VOICE):
     return f"{special_start}{formatted_prompt}{special_end}"
 
 
+def format_prompt_instruct(prompt, instructions, voice=DEFAULT_VOICE):
+    # TODO wtf is with these special tokens?
+    text_turn = f"<custom_token_3><|begin_of_text|><voice>{voice}</voice><inst>{instructions}</inst>{prompt}<|eot_id|><custom_token_4>"
+    return text_turn
+
+
 def generate_tokens_from_api(
     prompt,
     voice=DEFAULT_VOICE,
@@ -58,9 +64,13 @@ def generate_tokens_from_api(
     top_p=TOP_P,
     max_tokens=MAX_TOKENS,
     repetition_penalty=REPETITION_PENALTY,
+    instructions=None,
 ):
     """Generate tokens from text using LM Studio API."""
-    formatted_prompt = format_prompt(prompt, voice)
+    if instructions:
+        formatted_prompt = format_prompt_instruct(prompt, instructions, voice)
+    else:
+        formatted_prompt = format_prompt(prompt, voice)
     print(f"Generating speech for: {formatted_prompt}")
 
     # Create the request payload for the LM Studio API
@@ -70,6 +80,7 @@ def generate_tokens_from_api(
         "max_tokens": max_tokens,
         "temperature": temperature,
         "top_p": top_p,
+        "top_k": 128,
         "repeat_penalty": repetition_penalty,
         "stream": True,
     }
@@ -106,7 +117,7 @@ def generate_tokens_from_api(
     print("Token generation complete")
 
 
-async def tokens_decoder(decoder_model, token_gen, flush_frames=4):
+async def tokens_decoder(token_gen, flush_frames=4):
     """Asynchronous token decoder that converts token stream to audio stream."""
     buffer = []
     count = 0
@@ -122,14 +133,13 @@ async def tokens_decoder(decoder_model, token_gen, flush_frames=4):
                 and count > TOKENS_PER_FRAME * flush_frames
             ):
                 buffer_to_proc = buffer[-TOKENS_PER_FRAME * flush_frames :]
-                audio_samples = convert_to_audio(decoder_model, buffer_to_proc)
+                audio_samples = convert_to_audio(buffer_to_proc)
                 if audio_samples is not None:
                     yield audio_samples
 
 
 def tokens_decoder_sync(syn_token_gen, output_file=None):
     """Synchronous wrapper for the asynchronous token decoder."""
-    decoder_model, _ = get_model()
     audio_queue = queue.Queue()
     audio_segments = []
 
@@ -149,7 +159,7 @@ def tokens_decoder_sync(syn_token_gen, output_file=None):
             yield token
 
     async def async_producer():
-        async for audio_chunk in tokens_decoder(decoder_model, async_token_gen()):
+        async for audio_chunk in tokens_decoder(async_token_gen()):
             audio_queue.put(audio_chunk)
         audio_queue.put(None)  # Sentinel to indicate completion
 
@@ -212,6 +222,7 @@ def generate_speech_from_api(
     top_p=TOP_P,
     max_tokens=MAX_TOKENS,
     repetition_penalty=REPETITION_PENALTY,
+    instructions=None,
 ):
     """Generate speech from text using Orpheus model via LM Studio API."""
     return tokens_decoder_sync(
@@ -222,6 +233,7 @@ def generate_speech_from_api(
             top_p=top_p,
             max_tokens=max_tokens,
             repetition_penalty=repetition_penalty,
+            instructions=instructions,
         ),
         output_file=output_file,
     )
