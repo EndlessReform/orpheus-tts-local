@@ -4,6 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.98"
 axum = "0.8.3"
+futures = "0.3.31"
+mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git" }
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
+tokio-stream = "0.1.17"
+
+[lib]
+name = "server"
+path = "lib/mod.rs"
+
+[features]
+default = []
+cuda = ["mistralrs/cuda"]
+metal = ["mistralrs/metal"]
