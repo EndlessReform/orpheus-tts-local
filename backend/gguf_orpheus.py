@@ -53,7 +53,7 @@ def format_prompt(prompt, voice=DEFAULT_VOICE):
 
 def format_prompt_instruct(prompt, instructions, voice=DEFAULT_VOICE):
     # TODO wtf is with these special tokens?
-    text_turn = f"<custom_token_3><|begin_of_text|><voice>{voice}</voice><inst>{instructions}</inst>{prompt}<|eot_id|><custom_token_4>"
+    text_turn = f"<custom_token_3><|begin_of_text|><voice>{voice}</voice><inst>{instructions}</inst>{prompt}<|eot_id|>"
     return text_turn
 
 

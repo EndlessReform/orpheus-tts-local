@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use server::handlers::{root::root, speech::speech_handler};
 use server::state::AppState;
+use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,10 +33,16 @@ async fn main() -> Result<()> {
         .route("/", get(root))
         // `POST /users` goes to `create_user`
         .route("/v1/audio/speech", post(speech_handler))
-        .with_state(state);
+        .with_state(state)
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
+        );
 
-    // run our app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    // run our app with hyper, listening globally on port 8000
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await?;
     axum::serve(listener, app).await?;
     Ok(())
 }

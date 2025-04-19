@@ -11,6 +11,7 @@ mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git" }
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
 tokio-stream = "0.1.17"
+tower-http = { version = "0.6.2", features = ["cors"] }
 
 [lib]
 name = "server"

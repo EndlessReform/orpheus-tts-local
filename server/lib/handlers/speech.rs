@@ -2,6 +2,7 @@ use axum::body::Body;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::{Json, extract::State, response::IntoResponse};
 use futures::stream::{self, Stream};
+use mistralrs::{RequestBuilder, SamplingParams, StopTokens, TextMessageRole, TextMessages};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -35,6 +36,30 @@ pub async fn speech_handler(
     State(state): State<Arc<AppState>>,
     Json(req): Json<SpeechRequest>,
 ) -> impl IntoResponse {
+    let sampling = SamplingParams {
+        temperature: Some(0.9),
+        top_k: Some(128),
+        frequency_penalty: Some(1.1),
+        top_p: Some(0.9),
+        max_len: Some(1200),
+        min_p: None,
+        stop_toks: Some(StopTokens::Ids(vec![128258])), // <custom_token_2> = EOT
+        top_n_logprobs: 0,
+        presence_penalty: None,
+        logits_bias: None,
+        n_choices: 1,
+        dry_params: None,
+    };
+
+    let request = RequestBuilder::new()
+        .add_message(TextMessageRole::User, &req.input)
+        .set_sampling(sampling);
+
+    let res = state.backbone.send_chat_request(request).await.unwrap();
+    // Do nothing with it for now, just testing if it even works
+    println!("Res: {:?}", res.usage);
+    println!("Res: {:?}", res.choices[0].message.content);
+
     // Replace with actual streaming logic using state.backbone
     let stream = generate_speech_stream(&req.input, &req.voice, req.instructions.as_deref());
     let body = Body::from_stream(stream);

@@ -1,3 +1,3 @@
 {
-    "chat_template": "{%- for m in messages -%}<|audio|>{{ m.voice }}: {{ m.content }}<|eot_id|>{%- endfor -%}{%- if add_generation_prompt -%}<|audio|>{{ messages[-1].voice }}: {%- endif -%}"
+    "chat_template": "{%- set st = \"<|audio|>\" -%}{%- set et = \"<|eot_id|>\" -%}{{ st }}{{ voice }}: {{ messages[-1].content | trim }}{{ et }}"
 }
