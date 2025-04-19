@@ -1,8 +1,13 @@
 __pycache__
 outputs/
-.venv/
 .DS_Store
 *.wav
 !examples/*.wav
 node_modules
+
+# Python
 .env
+.venv/
+
+# Rust
+target
